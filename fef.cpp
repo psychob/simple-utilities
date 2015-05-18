@@ -67,6 +67,20 @@ namespace
    str.replace( start_pos, what.length(), to );
    return true;
   }
+
+ template < typename T >
+  void replace_all( std::basic_string<T> & str, const std::basic_string<T> & what,
+                    const std::basic_string<T> & to )
+  {
+   if( what.empty() )
+        return;
+    size_t start_pos = 0;
+    while( (start_pos = str.find(what, start_pos)) != std::basic_string<T>::npos)
+    {
+     str.replace(start_pos, what.length(), to);
+     start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
+    }
+  }
 }
 
 namespace
@@ -133,13 +147,13 @@ void run_command( const std::wstring & path )
  std::wstring estr = exec_str;
 
  if ( estr.find(L"${fname}") != estr.npos )
-  replace<wchar_t>(estr, L"${fname}", extract_file_name(path));
+  replace_all<wchar_t>(estr, L"${fname}", extract_file_name(path));
  if ( estr.find(L"${fbase}") != estr.npos )
-  replace<wchar_t>(estr, L"${fbase}", extract_file_base(path));
+  replace_all<wchar_t>(estr, L"${fbase}", extract_file_base(path));
  if ( estr.find(L"${fpath}") != estr.npos )
-  replace<wchar_t>(estr, L"${fpath}", path);
+  replace_all<wchar_t>(estr, L"${fpath}", path);
  if ( estr.find(L"${path}") != estr.npos )
-  replace<wchar_t>(estr, L"${path}", extract_path(path));
+  replace_all<wchar_t>(estr, L"${path}", extract_path(path));
 
  if ( dry_run )
  {
