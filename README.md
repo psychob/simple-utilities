@@ -6,3 +6,4 @@ Small application that don't use more then one file are stored in main directory
    * **fef** - (*aka for every file*) - program that runs specified program for every file/directory in current working directory, written in c++
    * **youtube-playlist-get** - script that gets urls to all videos on said playlist, written in php
    * **wallpapaer** - script that manages wallpapers
+   * **fmap** - script to map archives to folders
