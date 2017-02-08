@@ -1,97 +1,110 @@
 <?php
- // wallpaper
- // (c) 2015 Andrzej Budzanowski
+	// wallpaper
+	// (c) 2015 - 2017 Andrzej Budzanowski
 
- echo "wallpaper.php".PHP_EOL.
-      "(c) 2015 Andrzej Budzanowski".PHP_EOL;
+	echo "wallpaper.php".PHP_EOL.
+		 "(c) 2015 - 2017 Andrzej Budzanowski".PHP_EOL;
 
- if ( $argc < 2 )
- {
-  echo "usage:".PHP_EOL.
-       " wallpaper.php folder_to_scan width_desktop height_desktop".PHP_EOL;
+	if ($argc < 2)
+	{
+		echo "usage:".PHP_EOL.
+			 " wallpaper.php folder [width height [epsilon]]" .PHP_EOL;
 
-  return 1;
- }
+		return 1;
+	}
 
- $path = $argv[1];
- $desktop_width  = $argc >= 3 ? $argv[2] : null;
- $desktop_height = $argc >= 4 ? $argv[3] : null;
+	$path = $argv[1];
 
- if ( $desktop_height == null || $desktop_width == null )
-  $desktop_height = $desktop_width = null;
+	$width = null;
+	$height = null;
+	$wdiff = 0;
+	$hdiff = 0;
+	$epsilon = 0.05;
 
- function is_portrait( $w, $h )
- {
-  return $h > $w;
- }
+	if ($argc >= 4)
+	{
+		$width = intval($argv[2]);
+		$height = intval($argv[3]);
 
- function is_landscape( $w, $h )
- {
-  return $h < $w;
- }
+		if ($argc >= 5)
+		{
+			$epsilon = floatval($argv[4]) / 100;
+		}
+	}
 
- function is_smaller_then_desktop( $w, $dw )
- {
-  if ( $dw == null )
-   return false;
+	if (empty($width) || empty($height))
+	{
+		$width = $height = null;
 
-  return $w < $dw;
- }
+		echo " Desktop resolution: not set".PHP_EOL;
+	} else
+	{
+		echo " Desktop resolution: {$width}x{$height} (".($epsilon * 100)."%)".PHP_EOL;
 
- function rec_move( $base, $current_catalog, $valid )
- {
-  foreach ( $valid as $k => $v )
-  {
-   if ( is_array($v) )
-   {
-    @mkdir( $current_catalog. DIRECTORY_SEPARATOR. $k );
-    rec_move( $base, $current_catalog. DIRECTORY_SEPARATOR. $k, $v );
-   } else
-   {
-    @rename( $base . DIRECTORY_SEPARATOR . $v,
-             $current_catalog. DIRECTORY_SEPARATOR . $v );
-   }
-  }
- }
+		$wdiff = $width * $epsilon;
+		$hdiff = $height * $epsilon;
+	}
 
- $sd     = scandir( $path );
- $valid  = [];
+	function getDirectoryFor($path)
+	{
+		global $width;
+		global $height;
+		global $wdiff;
+		global $hdiff;
 
- echo "Scanning directory ";
+		$img = getimagesize($path);
 
- $tmp_it = 0;
- $tmp_ml = (count($sd)-2) * 10 / 100;
+		if (empty($width))
+		{
+			return [
+				$img[0], $img[1],
+			];
+		} else
+		{
+			$w = $img[0];
+			$h = $img[1];
 
- foreach ( $sd as $v )
- {
-  if ( $v == "." || $v == ".." )
-   continue;
+			if (abs($w - $width) <= $wdiff)
+			{
+				if (abs($h - $height) <= $hdiff)
+				{
+					return [ 'good' ];
+				}
+			}
 
-  $img_src = getimagesize($argv[1]. DIRECTORY_SEPARATOR . $v);
+			return [ 'bad' ];
+		}
+	}
 
-  if ( is_portrait($img_src[0], $img_src[1]))
-  {
-   if (is_smaller_then_desktop($img_src[0], $desktop_width))
-    $valid['portrait']['smaller'][] = $v;
-   else
-    $valid['portrait'][$img_src[0]][$img_src[1]][] = $v;
-  } else if ( is_landscape($img_src[0], $img_src[1]) )
-  {
-   if (is_smaller_then_desktop($img_src[1], $desktop_height))
-    $valid['landscape']['smaller'][] = $v;
-   else
-    $valid['landscape'][$img_src[0]][$img_src[1]][] = $v;
-  }
+	function processRecursive($dir, $path)
+	{
+		foreach (scandir($dir) as $v)
+		{
+			if (in_array($v, ['.', '..', '_']))
+				continue;
 
-  $tmp_it++;
-  if ( $tmp_it % $tmp_ml == 0 )
-   echo ".";
- }
+			$name = $dir. DIRECTORY_SEPARATOR .$v;
 
- echo " DONE".PHP_EOL;
+			if (is_dir($name))
+				processRecursive ($name, $path);
 
- echo "Moving files ";
- rec_move( $argv[1], $argv[1], $valid );
- echo " DONE".PHP_EOL;
+			$xpath = getDirectoryFor($name);
 
- return 0;
+			$npath = makeDir($path, $xpath);
+
+			rename($name, $npath . DIRECTORY_SEPARATOR . pathinfo($name, PATHINFO_BASENAME));
+		}
+	}
+
+	function makeDir($base, $dir)
+	{
+		$xdir = $base . DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, $dir);
+
+		@mkdir($xdir, 0777, true);
+
+		return $xdir;
+	}
+
+	processRecursive($path, $path . DIRECTORY_SEPARATOR . '_');
+
+	return 1;
