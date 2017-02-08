@@ -107,4 +107,4 @@
 
 	processRecursive($path, $path . DIRECTORY_SEPARATOR . '_');
 
-	return 1;
+	return 0;
